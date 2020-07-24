@@ -13,15 +13,15 @@ Function created and tested with R 4.0.2
 
 The RMD file contains 5 chunks, each containing their own function. The final chunk contains the main COVIDTestProbability function code. All previous chunks contain the functions the main function calls upon to complete and return its calculations.
 
-The first chunk contains the “DFFiller” function, which will input into a data frame the point, upper bound, and lower bound estimates for COVID19 PCR test sensitivity based upon a study by Dr. Kurcika et al.
+  * The first chunk contains the “DFFiller” function, which will input into a data frame the point, upper bound, and lower bound estimates for COVID19 PCR test sensitivity based upon a study by Dr. Kurcika et al.
 
-The second chunk contains the “DFconstructor” function, which will build the main data frame used to store relevant values for calculations. This function calls upon the DFFiller function within it.
+  * The second chunk contains the “DFconstructor” function, which will build the main data frame used to store relevant values for calculations. This function calls upon the DFFiller function within it.
 
-The third chunk contains the “Updater” function, which uses Sequential Bayesian Updating to calculate the probability the user is COVID19 positive or negative based upon their test sequence.
+  * The third chunk contains the “Updater” function, which uses Sequential Bayesian Updating to calculate the probability the user is COVID19 positive or negative based upon their test sequence.
 
-The fourth chunk contains the “fetcher” function, which checks to see if the user asked for probability of being positive or negative and checks to see number of days the user has had symptoms. From this information it will select and return the indices of interest to the user along with some text for easy interpretation.
+  * The fourth chunk contains the “fetcher” function, which checks to see if the user asked for probability of being positive or negative and checks to see number of days the user has had symptoms. From this information it will select and return the indices of interest to the user along with some text for easy interpretation.
 
-The fifth chunk contains the “COVIDTestProb” function, which is the main function. This function uses all previous functions to return requested values to the user. Note the returned results are vectorized, thus allowing a user to obtain the numeric results on their own if necessary.
+  * The fifth chunk contains the “COVIDTestProb” function, which is the main function. This function uses all previous functions to return requested values to the user. Note the returned results are vectorized, thus allowing a user to obtain the numeric results on their own if necessary.
 
 See comments in RMD file for more details.
 
@@ -37,7 +37,7 @@ See comments in RMD file for more details.
 
 In order to use the COVIDTestProbability function, the user must input a set of conditions into the following arguments.
 
-1. Enter whether the function should calculate the probability of being positive or negative into the argument `Want`
+1. Enter whether the function should calculate the probability of being positive or negative into the `Want` argument.
 
 2. Enter how many days the patient of interest has had symptoms into the `Time` argument. If the patient has no symptoms enter `Time = 0` and if the patient has recovered from symptoms enter `Time = -1`
 
