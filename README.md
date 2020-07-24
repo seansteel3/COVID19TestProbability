@@ -19,8 +19,21 @@ The program uses of Sequential Bayesian Updating to calculate the probability a 
 <!-- ABOUT THE PROJECT -->
 ## About the Project
 
-
 ### Motivations and Purpose
+
+Due to the ongoing COVID19 pandemic, there is widespread interest in understanding the true probabilities of being positive or negative given a set of PCR test results. Furthermore, research indicates there is a disturbingly high false negative rate with current PCR tests (see references). 
+
+This project aims to create a program that will allow a user to understand what the true probability of being COVID19 positive or negative is given a series of PCR test results.
+
+Testing diagnostics are typically given in sensitivities Pr(Patient Tests Positive | Patient is Positive)  and specificities  Pr(Patient Tests Negative | Patient is Negative). However, while in the right context this information is of great value, it is of little value to the patient being tested and is often misleading to medical staff. The information the patient is actually concerned with is the Pr(Patient is Positive | Positive Test) or Pr(Patient is Negative | Negative Test). These probabilities are also known as the positive predictive value (PPV) and the negative predictive value (NPV) of a test.
+
+Using Bayes Rule: 
+Pr⁡(A | B)=(Pr⁡(B│A)*Pr⁡(A))/(Pr⁡(B))
+
+Posterior=(Likelihood*Prior)/Evidence
+
+We can convert the sensitivities and specificities into the PPV and NPV. During the first iteration the sensitivity is the likelihood, the prior is the disease prevalence, and the posterior is the PPV. However, in subsequent iterations, the old posterior becomes the new prior. We can therefore sequentially update the probability of being positive or negative given a sequence of tests by iteratively using Bayes Rule. See file “Bayesian Sequential Updating for Disease Tests” for further discussion.
+
 
 ### Limitations
 
@@ -51,9 +64,9 @@ See comments in RMD file for more details.
 
 ### Set Up
 
-* Download the RMD File
+* Download the RMD File.
 
-* Run each chunk in order 
+* Run each must initially be run IN ORDER in the RMD file.
 
 * Once the final chunk is run, the main function COVIDTestProbability will be ready for use.
 
@@ -104,6 +117,8 @@ Email: sean.steele.a@gmail.com
 * Thanks Kelsey Maccuish for helping with testing.
 
 * References to Kurcika et al. https://www.acpjournals.org/doi/10.7326/M20-1495
+
+* References to Andrew N. Cohen, Bruce Kessel https://www.medrxiv.org/content/10.1101/2020.04.26.20080911v1.full.pdf
 
 
 
