@@ -13,7 +13,7 @@ Function created and tested with R 4.0.2
 
 The RMD file contains 5 chunks, each containing their own function. The final chunk contains the main COVIDTestProbability function code. All previous chunks contain the functions the main function calls upon to complete and return its calculations.
 
-  * The first chunk contains the “DFFiller” function, which will input into a data frame the point, upper bound, and lower bound estimates for COVID19 PCR test sensitivity based upon a study by Dr. Kurcika et al.
+  * The first chunk contains the “DFFiller” function, which will input into a data frame the point, upper bound, and lower bound estimates for COVID19 PCR test sensitivity based upon a study by Kurcika et al.
 
   * The second chunk contains the “DFconstructor” function, which will build the main data frame used to store relevant values for calculations. This function calls upon the DFFiller function within it.
 
@@ -25,7 +25,7 @@ The RMD file contains 5 chunks, each containing their own function. The final ch
 
 See comments in RMD file for more details.
 
-### Installations
+### Set Up
 
 * Download the RMD File
 
@@ -41,10 +41,10 @@ In order to use the COVIDTestProbability function, the user must input a set of 
 
 2. Enter how many days the patient of interest has had symptoms into the `Time` argument. If the patient has no symptoms enter `Time = 0` and if the patient has recovered from symptoms enter `Time = -1`
 
-3. Enter a vector containing the sequence of test results in order of when the tests were administered into the `TestVec` argument. Within that vector negative tests should be entered as a single capital "N" and positives as a single capital "P".  A test vector of two negative tests then a positive should be entered as follows:
+3. Enter a vector containing the sequence of test results in order of when the tests were administered into the `TestVec` argument. Negative tests should be entered as a single capital "N" and positives as a single capital "P".  A test vector of two negative tests and then two positives should be entered as follows:
 
 ```JS
-TESTVEC <- c("N", "N", "P")
+TESTVEC <- c("N", "N", "P", "P")
 COVIDTESTProbability(TestVec = TESTVEC,...)
 ```
 
@@ -67,6 +67,12 @@ Return:
 [5] and                                                   
 [6] 98.7  
 ```
+
+## Acknowledgements
+
+* Thanks Kelsey Maccuish for helping with testing.
+
+* References to Kurcika et al. https://www.acpjournals.org/doi/10.7326/M20-1495
 
 
 
