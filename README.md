@@ -95,6 +95,7 @@ Return:
 ## Contact
 
 Author: Sean Steele
+
 Email: sean.steele.a@gmail.com
 
 <!-- ACKNOWLEDGEMENTS -->
