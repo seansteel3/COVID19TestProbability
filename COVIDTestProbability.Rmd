@@ -1,0 +1,343 @@
+---
+title: "Untitled"
+author: "Sean Steele"
+date: "7/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##DF Filling Function, the Data Frame building function needs this to run
+```{r}
+## Function calculates or inputs the sensitivity and Pr(testingNeg/Pos) point, upper, and lower bounds for the first test case
+#function is run within the data frame constructing function
+DFFiller<-function(df){
+for (i in 1:nrow(df)){
+  df$sensitivity[i]<-(1-df$falseNeg[i])
+  df$sensitivityUB[i]<-(1-df$falseNegLB[i])
+  df$sensitivityLB[i]<-(1-df$falseNegUB[i])
+  df$PrTestNeg[i]<-(df$prevelance[i]*df$falseNeg[i])+(df$negative[i]*df$specificity[i])
+  df$PrTestNegUB[i]<-(df$prevelance[i]*df$falseNegUB[i])+(df$negative[i]*df$specificity[i])
+  df$PrTestNegLB[i]<-(df$prevelance[i]*df$falseNegLB[i])+(df$negative[i]*df$specificity[i])
+  df$PrTestPos[i]<-(1-df$PrTestNeg[i])
+  df$PrTestPosUB[i]<-(df$prevelance[i]*df$sensitivityUB[i])+(df$negative[i]*df$falsePos[i])
+  df$PrTestPosLB[i]<-(df$prevelance[i]*df$sensitivityLB[i])+(df$negative[i]*df$falsePos[i])
+}
+return(df)
+}
+```
+
+## Data Frame building function
+```{r}
+## Function builds the data frame used for all the calucations
+
+#initialize empty data frame
+DFConstructor<-function(Region, prevelanceDF){
+df = data.frame(testTime=character(0), sensitivity=double(0), falseNeg=double(0),PrTestNeg=double(0), PrTestPos=double(0))
+  
+#loop inputs false negative point, lower, and upper bound estimates based off of this study: https://www.acpjournals.org/doi/10.7326/M20-1495 for all time conditions
+  for (i in 1:5){
+    if (i == 1){
+      df[2,1]<- 0 #before symtoms
+      df$falseNeg[2]<-(.67)
+      df$falseNegUB[2]<-(.94)
+      df$falseNegLB[2]<-(.27)
+    }    
+    if (i == 2){
+      df[1,1]<- 1 #day 1 of symtoms
+      df$falseNeg[1]<-(.38)
+      df$falseNegUB[1]<-(.65)
+      df$falseNegLB[1]<-(.18)
+    }
+    if (i == 3){
+      df[3,1]<- 8 #day 8 of symtoms
+      df$falseNeg[3]<-(.20)
+      df$falseNegUB[3]<-(.30)
+      df$falseNegLB[3]<-(.12)
+    }
+    if (i == 4){
+      df[4,1]<- 9 #day 9 of symtoms
+      df$falseNeg[4]<-(.21)
+      df$falseNegUB[4]<-(.31)
+      df$falseNegLB[4]<-(.13)
+    }
+     if (i == 5){
+      df[5,1]<- -1 #after recovery
+      df$falseNeg[5]<-(.66)
+      df$falseNegUB[5]<-(.77)
+      df$falseNegLB[5]<-(.54)
+     }
+  
+  #select the COVID prevalence for the region the user requests
+  df$prevelance<-prevelanceDF$prevelance[prevelanceDF$Region==Region] 
+  #calculate the proportion of people not infected
+  df$negative<-(1-df$prevelance)
+ 
+  #input false positive and specificity
+  df$falsePos<-0.024 # based on non-reviewed midpoint of this study's IQR https://www.medrxiv.org/content/10.1101/2020.04.26.20080911v1.full.pdf
+  df$specificity<-(1-df$falsePos)
+
+  #initialize empty columns to hold posteriors
+  df$posterior<-NA 
+  df$posteriorUB<-NA
+  df$posteriorLB<-NA
+  }
+
+#run filling function to input the sensitivity and first test pr(testNeg/Pos)
+df1<-DFFiller(df) 
+
+#return constructed data frame
+return(df1)
+}
+
+# df<-DFConstructor(Region="CA", prevelanceDF = prevelanceDF)
+```
+
+#Sequential Bayesian Updater
+```{r}
+#Updater function calulates Sequential Bayes probabilities for the user given test vector
+
+Updater<-function(Want,df,test){
+  
+  #initialize an empty posterior dataframe to hold posterior calculations between sequential updates
+  posteriorDF<-data.frame(posterior=numeric(0), posteriorUB=numeric(0), posteriorLB=numeric(0))
+  for (i in 1:5){
+   posteriorDF[i,1]<-NA
+   posteriorDF[i,2]<-NA
+   posteriorDF[i,3]<-NA
+  }
+
+## Remaining code calculates Sequential Bayes probabilities
+
+  #calculate probabilty user is negative for COVID
+  if (Want == "Negative"){
+    for (i in 1:length(test)){
+      
+      #Check test at index i is negative
+      if (test[i] == "N"){
+        #Check if this is the first test in the test vector
+        if (i == 1){
+          #first prior is the probability of any random person being negative
+          prior <- df$negative
+          #first Pr(testing neg) is the probability of any random person testing negative
+          PrTestNeg <- df$PrTestNeg
+          PrTestNegUB <- df$PrTestNegUB
+          PrTestNegLB <- df$PrTestNegLB
+          #calculate first posteriors and update both main and posterior storing dataframe
+          df$posterior <- (df$specificity * prior)/PrTestNeg
+          df$posteriorUB <- (df$specificity * prior)/PrTestNegUB
+          df$posteriorLB <- (df$specificity * prior)/PrTestNegLB
+          posteriorDF$posterior <- (df$specificity * prior)/PrTestNeg
+          posteriorDF$posteriorUB <- (df$specificity * prior)/PrTestNegUB
+          posteriorDF$posteriorLB <- (df$specificity * prior)/PrTestNegLB
+        } else { #if not the first test in the test vector use last calculated posterior probabilities as priors
+        prior <- posteriorDF$posterior
+        priorUB <- posteriorDF$posteriorUB
+        priorLB <- posteriorDF$posteriorLB
+        #calculate probability of testing negative with new prior information (ie: this is prability this person tests negative since we now have an "updated" prior)
+        PrTestNeg <- ((prior * df$specificity)+((1-prior)*(df$falseNeg)))
+        PrTestNegUB <- ((priorUB * df$specificity)+((1-priorUB)*(df$falseNegUB)))
+        PrTestNegLB <- ((priorLB * df$specificity)+((1-priorLB)*(df$falseNegLB)))
+        #calculate new posterior probabilties and replace old posteriors in both main and storage dataframe
+        df$posterior <- (df$specificity * prior)/PrTestNeg
+        df$posteriorUB <- (df$specificity * priorUB)/PrTestNegUB
+        df$posteriorLB <- (df$specificity * priorLB)/PrTestNegLB
+        posteriorDF$posterior <- (df$specificity * prior)/PrTestNeg
+        posteriorDF$posteriorUB <- (df$specificity * priorUB)/PrTestNegUB
+        posteriorDF$posteriorLB <- (df$specificity * priorLB)/PrTestNegLB
+        }
+      }
+      
+      #comments are identical in respective sections, swapping out negative testing probabilties for positive testing probabilties
+      if (test[i] == "P"){
+        if (i == 1){
+          prior <- df$negative
+          PrTestPos <- df$PrTestPos
+          PrTestPosUB <- df$PrTestPosUB
+          PrTestPosLB <- df$PrTestPosLB
+          df$posterior <- (df$falsePos * prior)/PrTestPos
+          df$posteriorUB <- (df$falsePos * prior)/PrTestPosUB
+          df$posteriorLB <- (df$falsePos * prior)/PrTestPosLB
+          posteriorDF$posterior <- (df$falsePos * prior)/PrTestPos
+          posteriorDF$posteriorUB <- (df$falsePos * prior)/PrTestPosUB
+          posteriorDF$posteriorLB <- (df$falsePos * prior)/PrTestPosLB
+          
+        } else {
+          prior <- posteriorDF$posterior
+          priorUB <- posteriorDF$posteriorUB
+          priorLB <- posteriorDF$posteriorLB
+          PrTestPos <- ((df$falsePos*prior)+((1-prior)*df$sensitivity))
+          PrTestPosUB <- ((df$falsePos*priorUB)+((1-priorUB)*df$sensitivityUB))
+          PrTestPosLB <- ((df$falsePos*priorLB)+((1-priorLB)*df$sensitivityLB))
+          df$posterior <- (df$falsePos * prior)/PrTestPos
+          df$posteriorUB <- (df$falsePos * priorUB)/PrTestPosUB
+          df$posteriorLB <- (df$falsePos * priorLB)/PrTestPosLB
+          posteriorDF$posterior <- (df$falsePos * prior)/PrTestPos
+          posteriorDF$posteriorUB <- (df$falsePos * priorUB)/PrTestPosUB
+          posteriorDF$posteriorLB <- (df$falsePos * priorLB)/PrTestPosLB
+        }
+      }
+    }
+  }
+
+  #comments are identical to respective sections above, but now with in the frame work for calulating if the user is positive for COVID instead of negative
+  if (Want == "Positive"){
+    for (i in 1:length(test)){
+      if (test[i] == "N"){
+        if (i == 1){
+          prior <- df$prevelance
+          PrTestNeg <- df$PrTestNeg
+          PrTestNegUB <- df$PrTestNegUB
+          PrTestNegLB <- df$PrTestNegLB
+          df$posterior <- (df$falseNeg * prior)/PrTestNeg
+          df$posteriorUB <- (df$falseNegUB * prior)/PrTestNegUB
+          df$posteriorLB <- (df$falseNegUB * prior)/PrTestNegLB
+          posteriorDF$posterior <- (df$falseNeg * prior)/PrTestNeg
+          posteriorDF$posteriorUB <- (df$falseNegUB * prior)/PrTestNegUB
+          posteriorDF$posteriorLB <- (df$falseNegLB * prior)/PrTestNegLB
+        } else {
+          prior <- posteriorDF$posterior
+          priorUB <- posteriorDF$posteriorUB
+          priorLB <- posteriorDF$posteriorLB
+          PrTestNeg <- ((prior * df$falseNeg) + ((1-prior)* df$specificity))
+          PrTestNegUB <- ((priorUB * df$falseNegUB) + ((1-priorUB)* df$specificity))
+          PrTestNegLB <- ((priorLB * df$falseNegLB) + ((1-priorLB)* df$specificity))
+          df$posterior <- (df$falseNeg * prior)/PrTestNeg
+          df$posteriorUB <- (df$falseNegUB * priorUB)/PrTestNegUB
+          df$posteriorLB <- (df$falseNegLB * priorLB)/PrTestNegLB
+          posteriorDF$posterior <- (df$falseNeg * prior)/PrTestNeg
+          posteriorDF$posteriorUB <- (df$falseNegUB * priorUB)/PrTestNegUB
+          posteriorDF$posteriorLB <- (df$falseNegLB * priorLB)/PrTestNegLB
+        }
+      }
+      if (test[i] == "P"){
+        if (i == 1){
+          prior <- df$prevelance
+          PrTestPos <- df$PrTestPos
+          PrTestPosUB <- df$PrTestPosUB
+          PrTestPosLB <- df$PrTestPosLB
+          df$posterior <- (df$sensitivity * prior)/PrTestPos
+          df$posteriorUB <- (df$sensitivityUB * prior)/PrTestPosUB
+          df$posteriorLB <- (df$sensitivityLB * prior)/PrTestPosLB
+          posteriorDF$posterior <- (df$sensitivity * prior)/PrTestPos
+          posteriorDF$posteriorUB <- (df$sensitivityUB * prior)/PrTestPosUB
+          posteriorDF$posteriorLB <- (df$sensitivityLB * prior)/PrTestPosLB
+        } else {
+          prior <- posteriorDF$posterior
+          priorUB <- posteriorDF$posteriorUB
+          priorLB <- posteriorDF$posteriorLB
+          PrTestPos <- ((prior * df$sensitivity) + ((1- prior) * df$falsePos))
+          PrTestPosUB <- ((priorUB * df$sensitivityUB) + ((1- priorUB) * df$falsePos))
+          PrTestPosLB <- ((priorLB * df$sensitivityLB) + ((1- priorLB) * df$falsePos))
+          df$posterior <- (df$sensitivity * prior)/PrTestPos
+          df$posteriorUB <- (df$sensitivityUB * priorUB)/PrTestPosUB
+          df$posteriorLB <- (df$sensitivityLB * priorLB)/PrTestPosLB
+          posteriorDF$posterior <- (df$sensitivity * prior)/PrTestPos
+          posteriorDF$posteriorUB <- (df$sensitivityUB * priorUB)/PrTestPosUB
+          posteriorDF$posteriorLB <- (df$sensitivityLB * priorLB)/PrTestPosLB
+        }
+      }
+    }
+  }
+#return updated main data frame
+return(posteriorDF)
+}
+
+```
+
+#Fetching function
+```{r}
+##Fetching function checks if user asked for being positive or negative and the number of days of symptoms, then returns the main dataframe indexes of interest for the user with additional text for readability
+
+fetcher<- function (Want, time, df){
+  if (time == 0){
+    if (Want == "Positive"){
+      RETURN <- c(noquote("The percent chance you are positive is estimated to be"), round((df$posterior[2])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB)*100, 1), noquote("and"), round((df$posteriorUB)*100,1))
+    } else {
+      RETURN <- c(noquote("The percent chance you are negative is estimated to be"), round((df$posterior[2])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[2])*100, 1), noquote("and"), round((df$posteriorUB[2])*100,1)) 
+    }
+  }
+  if (time > 0 & time < 7){
+    if (Want == "Positive"){
+      RETURN <- c(noquote("The percent chance you are positive is estimated to be"), round((df$posterior[1])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[1])*100, 1), noquote("and"), round((df$posteriorUB[1])*100,1))
+    } else {
+      RETURN <- c(noquote("The percent chance you are negative is estimated to be"), round((df$posterior[1])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[1])*100, 1), noquote("and"), round((df$posteriorUB[1])*100,1)) 
+    }
+  }
+  if (time > 6 & time < 9){
+    if (Want == "Positive"){
+      RETURN <- c(noquote("The percent chance you are positive is estimated to be"), round((df$posterior[3])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[3])*100, 1), noquote("and"), round((df$posteriorUB[3])*100,1))
+    } else {
+      RETURN <- c(noquote("The percent chance you are negative is estimated to be"), round((df$posterior[3])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[3])*100, 1), noquote("and"), round((df$posteriorUB[3])*100,1)) 
+    }
+  }
+  if (time > 8){
+    if (Want == "Positive"){
+      RETURN <- c(noquote("The percent chance you are positive is estimated to be"), round((df$posterior[4])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[4])*100, 1), noquote("and"), round((df$posteriorUB[4])*100,1))
+    } else {
+      RETURN <- c(noquote("The percent chance you are negative is estimated to be"), round((df$posterior[4])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[4])*100, 1), noquote("and"), round((df$posteriorUB[4])*100,1)) 
+    }
+  }
+  if (time < 0){
+    if (Want == "Positive"){
+      RETURN <- c(noquote("The percent chance you are positive is estimated to be"), round((df$posterior[5])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[5])*100, 1), noquote("and"), round((df$posteriorUB[5])*100,1))
+    } else {
+      RETURN <- c(noquote("The percent chance you are negative is estimated to be"), round((df$posterior[5])*100, 1), noquote("and with 95% confidence is between"), round((df$posteriorLB[5])*100, 1), noquote("and"), round((df$posteriorUB[5])*100,1)) 
+    }
+  }
+  return(RETURN)
+}
+```
+
+
+#Final Testing Function
+```{r}
+## Main function
+# time = # of days of symptoms (input -1 if recovered and 0 if pre/asymptomatic)
+# TestVec = vector of tests in the order the user received them
+# Region = state abbreviation for the state the user was exposed in
+# Want = Positive or Negative corresponding to which probability the user is interested in knowing
+
+COVIDTestProbability <- function(Want,Time, TestVec, Region){
+#Initalize empty data frame for prevalence in each region of interest
+  prevelanceDF<- data.frame(Region=character(0), prevelance=double(0))
+  
+  #input the prevalences as of July 23rd, and the corresponding state abbreviations
+  prevelanceDF[1,1]<-"GA"
+  prevelanceDF[1,2]<-((127409/10620000)*10)
+  prevelanceDF[2,1]<-"NY"
+  prevelanceDF[2,2]<-((140708/19450000)*10)
+  prevelanceDF[3,1]<-"CA"
+  prevelanceDF[3,2]<-((292967/39510000)*10)
+  prevelanceDF[4,1]<-"AZ"
+  prevelanceDF[4,2]<-((130144/7279000)*10)
+  prevelanceDF[5,1]<-"NC"
+  prevelanceDF[5,2]<-((26462/10490000)*10)
+  prevelanceDF[6,1]<-"TX"
+  prevelanceDF[6,2]<-((140708/19450000)*10)
+  prevelanceDF[7,1]<-"VA"
+  prevelanceDF[7,2]<-((68704/8536000)*10)
+  prevelanceDF[8,1]<-"FL"
+  prevelanceDF[8,2]<-((344397/21480000)*10)
+
+#run dataframe constructing function to build df to hold all values of interest
+  df1 <- DFConstructor(Region = Region, prevelanceDF = prevelanceDF)
+
+#Use Sequential Bayes to update probabilities of being what is asked in Want argument
+  df2 <- Updater(Want = Want, df = df1, test = TestVec)
+
+#Fetch values of interest from main updated dataframe to be returned to user
+  RETURN <- fetcher(Want = Want, time = Time, df = df2)
+  
+#Return values of interest to user
+  return(RETURN)
+}
+
+testVec <- c("N", "N", "P", "P")
+COVIDTestProbability(Time = 1, TestVec = testVec, Region = "FL", Want = "Positive")
+
+```
+
+
+
