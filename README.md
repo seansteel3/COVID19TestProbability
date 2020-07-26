@@ -127,7 +127,7 @@ Email: sean.steele.a@gmail.com
 <!-- ACKNOWLEDGEMENTS -->
 ## Acknowledgements
 
-* Thanks Kelsey Maccuish for helping with testing.
+* Thanks to Kelsey Maccuish for helping with testing.
 
 * References to Kurcika et al. https://www.acpjournals.org/doi/10.7326/M20-1495
 
