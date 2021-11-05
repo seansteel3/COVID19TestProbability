@@ -1,5 +1,5 @@
 ## COVID19TestProbability Function
-The program uses of Sequential Bayesian Updating to calculate the probability a user is COVID19 positive or negative for PCR based upon a set of conditions the user inputs into the function.
+The project is a first attempt at a Sequential Bayesian Updating program to calculate the probability a user is COVID19 positive or negative for PCR based upon a set of conditions the user inputs into the function.
 
 
 <!-- TABLE OF CONTENTS -->
